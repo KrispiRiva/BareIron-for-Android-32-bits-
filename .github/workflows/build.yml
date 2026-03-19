@@ -29,29 +29,20 @@ jobs:
         with:
           ndk-version: 'r26b'
 
-      # FIXED: Specifically downloads Minecraft 1.21.8 as the error requested
+      # Downloads the exact 1.21.8 version required by BareIron
       - name: Download Minecraft 1.21.8 Server Jar
         run: |
           mkdir -p notchian
           python3 -c '
           import urllib.request, json
-          try:
-              # Get version list
-              manifest_url = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
-              manifest = json.loads(urllib.request.urlopen(manifest_url).read())
-              
-              # Find 1.21.8 specifically
-              version_url = next(v["url"] for v in manifest["versions"] if v["id"] == "1.21.8")
-              version_data = json.loads(urllib.request.urlopen(version_url).read())
-              jar_url = version_data["downloads"]["server"]["url"]
-              
-              print(f"Found 1.21.8 at: {jar_url}")
-              urllib.request.urlretrieve(jar_url, "notchian/server.jar")
-              print("Download success.")
-          except Exception as e:
-              print(f"Error: {e}")
-              exit(1)
+          manifest_url = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
+          manifest = json.loads(urllib.request.urlopen(manifest_url).read())
+          version_url = next(v["url"] for v in manifest["versions"] if v["id"] == "1.21.8")
+          version_data = json.loads(urllib.request.urlopen(version_url).read())
+          jar_url = version_data["downloads"]["server"]["url"]
+          urllib.request.urlretrieve(jar_url, "notchian/server.jar")
           '
+          echo "1.21.8 Downloaded."
 
       - name: Extract Minecraft Data (Registries)
         run: |
@@ -64,11 +55,9 @@ jobs:
           # Use the API 23 (Android 6.0) Clang compiler
           CC="${{ steps.setup-ndk.outputs.ndk-path }}/toolchains/llvm/prebuilt/linux-x86_64/bin/armv7a-linux-androideabi23-clang"
           
-          # Optimization Flags:
-          # -O3: Max speed for your Snapdragon 210
-          # -fPIE -pie: Mandatory for Android execution
-          # -lm -lpthread: Standard libraries
-          $CC -O3 *.c -I. -fPIE -pie -lm -lpthread -o bareiron-android
+          # FIXED: We now use "find" to get all .c files in the src folder and the root
+          # -Isrc and -I. tell the compiler where to find the "headers" (.h files)
+          $CC -O3 $(find . -name "*.c") -Isrc -I. -fPIE -pie -lm -lpthread -o bareiron-android
           
           echo "Build Complete."
 
