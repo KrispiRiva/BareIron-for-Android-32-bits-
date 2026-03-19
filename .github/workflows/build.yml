@@ -1,7 +1,7 @@
 name: BareIron-Android-Build
 
 on:
-  workflow_dispatch: # This gives you the "Run Workflow" button to build manually
+  workflow_dispatch:
 
 jobs:
   build:
@@ -29,24 +29,45 @@ jobs:
         with:
           ndk-version: 'r26b'
 
+      # FIXED: Specifically downloads Minecraft 1.21.8 as the error requested
+      - name: Download Minecraft 1.21.8 Server Jar
+        run: |
+          mkdir -p notchian
+          python3 -c '
+          import urllib.request, json
+          try:
+              # Get version list
+              manifest_url = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
+              manifest = json.loads(urllib.request.urlopen(manifest_url).read())
+              
+              # Find 1.21.8 specifically
+              version_url = next(v["url"] for v in manifest["versions"] if v["id"] == "1.21.8")
+              version_data = json.loads(urllib.request.urlopen(version_url).read())
+              jar_url = version_data["downloads"]["server"]["url"]
+              
+              print(f"Found 1.21.8 at: {jar_url}")
+              urllib.request.urlretrieve(jar_url, "notchian/server.jar")
+              print("Download success.")
+          except Exception as e:
+              print(f"Error: {e}")
+              exit(1)
+          '
+
       - name: Extract Minecraft Data (Registries)
         run: |
-          # 1. This script downloads the official Minecraft Server JAR
           chmod +x extract_registries.sh
           ./extract_registries.sh
-          
-          # 2. This formats that data into C headers for the server
           node build_registries.js
 
       - name: Compile for Android 6.0 (ARMv7 32-bit)
         run: |
-          # Define the specific Android 6 compiler from the NDK
+          # Use the API 23 (Android 6.0) Clang compiler
           CC="${{ steps.setup-ndk.outputs.ndk-path }}/toolchains/llvm/prebuilt/linux-x86_64/bin/armv7a-linux-androideabi23-clang"
           
-          # Compile all .c files into one standalone binary
-          # -O3: Maximum performance optimization
-          # -fPIE -pie: Required for Android security
-          # -lm -lpthread: Includes math and multi-threading libraries
+          # Optimization Flags:
+          # -O3: Max speed for your Snapdragon 210
+          # -fPIE -pie: Mandatory for Android execution
+          # -lm -lpthread: Standard libraries
           $CC -O3 *.c -I. -fPIE -pie -lm -lpthread -o bareiron-android
           
           echo "Build Complete."
