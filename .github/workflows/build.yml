@@ -55,9 +55,9 @@ jobs:
           # Use the API 23 (Android 6.0) Clang compiler
           CC="${{ steps.setup-ndk.outputs.ndk-path }}/toolchains/llvm/prebuilt/linux-x86_64/bin/armv7a-linux-androideabi23-clang"
           
-          # FIXED: We now use "find" to get all .c files in the src folder and the root
-          # -Isrc and -I. tell the compiler where to find the "headers" (.h files)
-          $CC -O3 $(find . -name "*.c") -Isrc -I. -fPIE -pie -lm -lpthread -o bareiron-android
+          # FIXED: Swapped -Isrc to -Iinclude so it can find globals.h
+          # We grab every .c file inside the src/ folder and link them together
+          $CC -O3 $(find src -name "*.c") -Iinclude -I. -fPIE -pie -lm -lpthread -o bareiron-android
           
           echo "Build Complete."
 
