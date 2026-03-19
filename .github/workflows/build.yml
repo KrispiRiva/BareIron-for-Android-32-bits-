@@ -48,15 +48,18 @@ jobs:
         run: |
           chmod +x extract_registries.sh
           ./extract_registries.sh
-          node build_registries.js
+          
+          # FIX: Pull the generated registries out of the notchian folder 
+          # and move them to the main folder where the compiler expects them.
+          find . -name "registries.c" -exec mv {} . \;
+          find . -name "registries.h" -exec mv {} . \;
 
       - name: Compile for Android 6.0 (ARMv7 32-bit)
         run: |
           # Use the API 23 (Android 6.0) Clang compiler
           CC="${{ steps.setup-ndk.outputs.ndk-path }}/toolchains/llvm/prebuilt/linux-x86_64/bin/armv7a-linux-androideabi23-clang"
           
-          # FIX 1: Removed -lpthread because Android already has threading built-in.
-          # FIX 2: Explicitly added registries.c so the compiler actually reads the generated block data.
+          # Now registries.c is guaranteed to be sitting right here!
           $CC -O3 $(find src -name "*.c") registries.c -Iinclude -I. -fPIE -pie -lm -o bareiron-android
           
           echo "Build Complete."
